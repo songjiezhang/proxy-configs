@@ -16,11 +16,20 @@ jobs:
 
       - name: Download mihomo
         run: |
-          # 固定一个 mihomo 版本，方便复现；可以根据你实际使用的版本调整
+          # 可以按需要换版本号
           MIHOMO_VERSION="v1.19.17"
-          curl -L "https://github.com/MetaCubeX/mihomo/releases/download/${MIHOMO_VERSION}/mihomo-linux-amd64.tar.gz" -o mihomo.tar.gz
-          tar -xzf mihomo.tar.gz
+          MIHOMO_FILE="mihomo-linux-amd64-${MIHOMO_VERSION}.gz"
+
+          # 下载 gzip 压缩好的二进制
+          curl -L "https://github.com/MetaCubeX/mihomo/releases/download/${MIHOMO_VERSION}/${MIHOMO_FILE}" -o "${MIHOMO_FILE}"
+
+          # 解压并重命名为 mihomo
+          gunzip "${MIHOMO_FILE"
+          mv "mihomo-linux-amd64-${MIHOMO_VERSION}" mihomo
+
+          # 加执行权限，顺便看一眼文件信息
           chmod +x mihomo
+          ./mihomo -v || true
 
       - name: Convert direct.list to direct.mrs
         run: |
