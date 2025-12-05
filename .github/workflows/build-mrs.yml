@@ -33,7 +33,23 @@ jobs:
           # 加执行权限，顺便看一眼文件信息
           chmod +x mihomo
           ./mihomo -v || true
+          
+      - name: Download sing-box
+        run: |
+          # 固定一个 sing-box 版本，方便复现；版本号可以自己去 release 页换
+          SINGBOX_VERSION="1.12.12"
+          TARBALL="sing-box-${SINGBOX_VERSION}-linux-amd64.tar.gz"
 
+          echo "Downloading ${TARBALL} ..."
+          curl -L "https://github.com/SagerNet/sing-box/releases/download/v${SINGBOX_VERSION}/${TARBALL}" -o "${TARBALL}"
+
+          echo "Extracting ${TARBALL} ..."
+          tar -xzf "${TARBALL}"
+          mv "sing-box-${SINGBOX_VERSION}-linux-amd64/sing-box" sing-box
+
+          chmod +x sing-box
+          ./sing-box version || true
+          
       - name: Normalize direct.list to mihomo format
         run: |
           cd rules
@@ -55,8 +71,45 @@ jobs:
           ../mihomo convert-ruleset domain text direct_mihomo.list direct.mrs
           ls -lh direct.*
 
-      - name: Commit and push direct.mrs
+      - name: Generate sing-box JSON ruleset source
+        run: |
+          cd rules
+
+          # 把 DOMAIN-SUFFIX,xxx.com 抽成 JSON 里的 "xxx.com",
+          awk -F',' '
+            /^[[:space:]]*#/ { next }          # 跳过注释
+            NF == 0 { next }                   # 跳过空行
+            $1 ~ /DOMAIN-SUFFIX/ {
+              gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2);
+              print "        \"" $2 "\","
+            }
+          ' direct.list | sed '$ s/,$//' > singbox_domain_suffix.tmp
+
+          # 组装成 sing-box 规则集源文件
+          cat > direct-singbox.json <<EOF
+          {
+            "version": 4,
+            "rules": [
+              {
+                "domain_suffix": [
+          $(cat singbox_domain_suffix.tmp)
+                ]
+              }
+            ]
+          }
+          EOF
+
+          echo "Generated sing-box source JSON:"
+          cat direct-singbox.json
+        
+      - name: Compile sing-box ruleset to direct.srs
+        run: |
+          cd rules
+          ../sing-box rule-set compile --output direct.srs direct-singbox.json
+          ls -lh direct.*
+
+      - name: Commit and push ruleset binaries
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "chore: update direct.mrs from direct.list"
-          file_pattern: "rules/direct.mrs"
+          commit_message: "chore: update direct.mrs & direct.srs from direct.list"
+          file_pattern: "rules/direct.mrs rules/direct.srs"
