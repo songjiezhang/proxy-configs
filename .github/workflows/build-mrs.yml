@@ -24,7 +24,7 @@ jobs:
           curl -L "https://github.com/MetaCubeX/mihomo/releases/download/${MIHOMO_VERSION}/${MIHOMO_FILE}" -o "${MIHOMO_FILE}"
 
           # 解压并重命名为 mihomo
-          gunzip "${MIHOMO_FILE"
+          gunzip "${MIHOMO_FILE}"
           mv "mihomo-linux-amd64-${MIHOMO_VERSION}" mihomo
 
           # 加执行权限，顺便看一眼文件信息
