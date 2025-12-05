@@ -1,4 +1,4 @@
-name: Build direct.mrs from direct.list
+name: Build direct.mrs & direct.srs from direct.list
 
 on:
   push:
