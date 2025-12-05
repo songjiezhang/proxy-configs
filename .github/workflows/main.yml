@@ -1,0 +1,35 @@
+name: Build direct.mrs from direct.list
+
+on:
+  push:
+    paths:
+      - "rules/direct.list"   # 只有 direct.list 修改时触发
+  workflow_dispatch:          # 允许手动在 Actions 页面点按钮触发
+
+jobs:
+  build-mrs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Download mihomo
+        run: |
+          # 固定一个 mihomo 版本，方便复现；可以根据你实际使用的版本调整
+          MIHOMO_VERSION="v1.19.17"
+          curl -L "https://github.com/MetaCubeX/mihomo/releases/download/${MIHOMO_VERSION}/mihomo-linux-amd64.tar.gz" -o mihomo.tar.gz
+          tar -xzf mihomo.tar.gz
+          chmod +x mihomo
+
+      - name: Convert direct.list to direct.mrs
+        run: |
+          cd rules
+          ../mihomo convert-ruleset domain text direct.list direct.mrs
+          ls -lh direct.*
+
+      - name: Commit and push direct.mrs
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update direct.mrs from direct.list"
+          file_pattern: "rules/direct.mrs"
