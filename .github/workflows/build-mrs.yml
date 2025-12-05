@@ -34,10 +34,25 @@ jobs:
           chmod +x mihomo
           ./mihomo -v || true
 
-      - name: Convert direct.list to direct.mrs
+      - name: Normalize direct.list to mihomo format
         run: |
           cd rules
-          ../mihomo convert-ruleset domain text direct.list direct.mrs
+          awk -F',' '
+            /^[[:space:]]*#/ { next }          # 跳过注释
+            NF == 0 { next }                   # 跳过空行
+            $1 ~ /DOMAIN-SUFFIX/ {
+              gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2);  # 去掉空格
+              print "+." $2
+            }
+          ' direct.list > direct_mihomo.list
+
+          echo "Normalized rules:"
+          cat direct_mihomo.list
+
+      - name: Convert normalized list to direct.mrs
+        run: |
+          cd rules
+          ../mihomo convert-ruleset domain text direct_mihomo.list direct.mrs
           ls -lh direct.*
 
       - name: Commit and push direct.mrs
