@@ -5,7 +5,10 @@ on:
     paths:
       - "rules/direct.list"   # 只有 direct.list 修改时触发
   workflow_dispatch:          # 允许手动在 Actions 页面点按钮触发
-
+  
+permissions:
+  contents: write   # 让 github-actions[bot] 可以 push
+  
 jobs:
   build-mrs:
     runs-on: ubuntu-latest
