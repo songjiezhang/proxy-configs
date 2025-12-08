@@ -10,7 +10,6 @@ DOMAIN-SUFFIX,btschool.club
 DOMAIN-SUFFIX,pandapt.net
 DOMAIN-SUFFIX,cloudflare.com
 DOMAIN-SUFFIX,88996.cloud
-IP-CIDR,74.48.19.205/32
 # academic
 DOMAIN-SUFFIX,sciencedirect.com
 DOMAIN-SUFFIX,webofscience.com
