@@ -2,11 +2,12 @@
 DOMAIN-SUFFIX,zsjcn.site
 DOMAIN-SUFFIX,zhangsongjie.fun
 DOMAIN,challenges.cloudflare.com
+DOMAIN-KEYWORD,cloudflare
 DOMAIN-SUFFIX,koyeb.app
 DOMAIN-SUFFIX,adobe.com
 DOMAIN-SUFFIX,88996.cloud
 # academic
-DOMAIN-SUFFIX,sciencedirect.com
+DOMAIN-KEYWORD,sciencedirect.com
 DOMAIN-SUFFIX,webofscience.com
 DOMAIN-SUFFIX,elsevier.com
 DOMAIN-SUFFIX,easyscholar.cc
