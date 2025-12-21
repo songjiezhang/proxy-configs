@@ -6,6 +6,15 @@ DOMAIN-KEYWORD,cloudflare
 DOMAIN-SUFFIX,koyeb.app
 DOMAIN-SUFFIX,adobe.com
 DOMAIN-SUFFIX,88996.cloud
+# PT
+DOMAIN-SUFFIX,ptlover.cc
+DOMAIN-SUFFIX,btschool.club
+DOMAIN-SUFFIX,carpt.net
+DOMAIN-SUFFIX,hdkyl.in
+DOMAIN-SUFFIX,m-team.cc
+DOMAIN-SUFFIX,nicept.net
+DOMAIN-SUFFIX,pttime.org
+DOMAIN-SUFFIX,pandapt.net
 # academic
 DOMAIN-KEYWORD,sciencedirect
 DOMAIN-SUFFIX,webofscience.com
