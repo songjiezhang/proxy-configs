@@ -19,6 +19,7 @@ DOMAIN-SUFFIX,loc.cc
 # academic
 DOMAIN-KEYWORD,sciencedirect
 DOMAIN-SUFFIX,webofscience.com
+DOMAIN-SUFFIX,researchgate.net
 DOMAIN-SUFFIX,elsevier.com
 DOMAIN-SUFFIX,easyscholar.cc
 DOMAIN-SUFFIX,overleaf.com
