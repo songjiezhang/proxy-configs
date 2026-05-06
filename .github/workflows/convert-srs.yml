@@ -16,20 +16,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Install sing-box
+      - name: Install sing-box 1.13.x
         run: |
-          LATEST=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | grep tag_name | cut -d '"' -f 4)
-          VERSION=${LATEST#v}
-          curl -Lo sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/download/${LATEST}/sing-box-${VERSION}-linux-amd64.tar.gz"
+          VERSION=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases | \
+            grep -oP '"tag_name": "v\K1\.13\.\d+' | head -1)
+          echo "Installing sing-box v${VERSION}"
+          curl -Lo sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/download/v${VERSION}/sing-box-${VERSION}-linux-amd64.tar.gz"
           tar -xzf sing-box.tar.gz
           sudo mv sing-box-${VERSION}-linux-amd64/sing-box /usr/local/bin/
           sing-box version
 
       - name: Convert direct.list to SRS
         run: |
-          # Read direct.list and build sing-box rule-set JSON
           python3 << 'EOF'
-          import json, re
+          import json
 
           domains = []
           domain_suffixes = []
@@ -39,28 +39,33 @@ jobs:
           with open("rules/direct.list", "r") as f:
               for line in f:
                   line = line.strip()
-                  # Skip empty lines and comments
                   if not line or line.startswith("#") or line.startswith("!"):
                       continue
 
-                  # Handle various formats
-                  if line.startswith("full:"):
-                      domains.append(line[5:])
-                  elif line.startswith("domain:"):
-                      domain_suffixes.append(line[7:])
-                  elif line.startswith("keyword:"):
-                      domain_keywords.append(line[8:])
-                  elif line.startswith("regexp:"):
-                      # sing-box rule-set doesn't support regexp, skip
+                  # Strip inline comments: "DOMAIN-SUFFIX,example.com #comment"
+                  if " #" in line:
+                      line = line[:line.index(" #")].strip()
+                  if not line:
                       continue
-                  elif re.match(r"^\d+\.\d+\.\d+\.\d+(/\d+)?$", line) or ":" in line and "/" in line:
-                      ip_cidrs.append(line)
-                  elif line.startswith("."):
-                      domain_suffixes.append(line[1:])
-                  elif line.startswith("+."):
-                      domain_suffixes.append(line[2:])
+
+                  # Parse Clash-style format: TYPE,value
+                  if "," in line:
+                      rule_type, value = line.split(",", 1)
+                      rule_type = rule_type.strip().upper()
+                      value = value.strip()
+
+                      if rule_type == "DOMAIN":
+                          domains.append(value)
+                      elif rule_type == "DOMAIN-SUFFIX":
+                          domain_suffixes.append(value)
+                      elif rule_type == "DOMAIN-KEYWORD":
+                          domain_keywords.append(value)
+                      elif rule_type in ("IP-CIDR", "IP-CIDR6"):
+                          # Strip ,no-resolve if present
+                          value = value.split(",")[0].strip()
+                          ip_cidrs.append(value)
                   else:
-                      # Default: treat as domain suffix
+                      # Fallback: treat plain entries as domain suffix
                       domain_suffixes.append(line)
 
           # Build sing-box rule-set source JSON
@@ -75,7 +80,7 @@ jobs:
               rules["ip_cidr"] = sorted(set(ip_cidrs))
 
           rule_set = {
-              "version": 2,
+              "version": 4,
               "rules": [rules] if rules else []
           }
 
@@ -90,6 +95,12 @@ jobs:
         run: |
           sing-box rule-set compile rules/direct.json -o rules/direct.srs
           echo "Generated rules/direct.srs ($(stat -c%s rules/direct.srs) bytes)"
+
+      - name: Verify SRS file
+        run: |
+          sing-box rule-set decompile rules/direct.srs -o /tmp/verify.json
+          echo "Verification passed. Content:"
+          cat /tmp/verify.json
 
       - name: Commit and push
         run: |
