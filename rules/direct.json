@@ -1,0 +1,30 @@
+{
+  "version": 2,
+  "rules": [
+    {
+      "domain_suffix": [
+        "DOMAIN,challenges.cloudflare.com",
+        "DOMAIN,www.cc98.org",
+        "DOMAIN-KEYWORD,sciencedirect",
+        "DOMAIN-SUFFIX,189700.xyz",
+        "DOMAIN-SUFFIX,88996.cloud",
+        "DOMAIN-SUFFIX,adobe.com",
+        "DOMAIN-SUFFIX,cell.com",
+        "DOMAIN-SUFFIX,easyscholar.cc",
+        "DOMAIN-SUFFIX,elsevier.com",
+        "DOMAIN-SUFFIX,freedium.cfd",
+        "DOMAIN-SUFFIX,koyeb.app",
+        "DOMAIN-SUFFIX,loc.cc",
+        "DOMAIN-SUFFIX,mdpi.com",
+        "DOMAIN-SUFFIX,orcid.org",
+        "DOMAIN-SUFFIX,overleaf.com",
+        "DOMAIN-SUFFIX,overleafusercontent.com",
+        "DOMAIN-SUFFIX,readmedium.com",
+        "DOMAIN-SUFFIX,researchgate.net",
+        "DOMAIN-SUFFIX,webofscience.com",
+        "DOMAIN-SUFFIX,zhangsongjie.fun",
+        "DOMAIN-SUFFIX,zsjcn.site"
+      ]
+    }
+  ]
+}
