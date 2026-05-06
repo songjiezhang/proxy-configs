@@ -1,0 +1,106 @@
+name: Convert to sing-box SRS
+
+on:
+  push:
+    paths:
+      - 'rules/direct.list'
+  workflow_dispatch:
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install sing-box
+        run: |
+          LATEST=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | grep tag_name | cut -d '"' -f 4)
+          VERSION=${LATEST#v}
+          curl -Lo sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/download/${LATEST}/sing-box-${VERSION}-linux-amd64.tar.gz"
+          tar -xzf sing-box.tar.gz
+          sudo mv sing-box-${VERSION}-linux-amd64/sing-box /usr/local/bin/
+          sing-box version
+
+      - name: Convert direct.list to SRS
+        run: |
+          # Read direct.list and build sing-box rule-set JSON
+          python3 << 'EOF'
+          import json, re
+
+          domains = []
+          domain_suffixes = []
+          domain_keywords = []
+          ip_cidrs = []
+
+          with open("rules/direct.list", "r") as f:
+              for line in f:
+                  line = line.strip()
+                  # Skip empty lines and comments
+                  if not line or line.startswith("#") or line.startswith("!"):
+                      continue
+
+                  # Handle various formats
+                  if line.startswith("full:"):
+                      domains.append(line[5:])
+                  elif line.startswith("domain:"):
+                      domain_suffixes.append(line[7:])
+                  elif line.startswith("keyword:"):
+                      domain_keywords.append(line[8:])
+                  elif line.startswith("regexp:"):
+                      # sing-box rule-set doesn't support regexp, skip
+                      continue
+                  elif re.match(r"^\d+\.\d+\.\d+\.\d+(/\d+)?$", line) or ":" in line and "/" in line:
+                      ip_cidrs.append(line)
+                  elif line.startswith("."):
+                      domain_suffixes.append(line[1:])
+                  elif line.startswith("+."):
+                      domain_suffixes.append(line[2:])
+                  else:
+                      # Default: treat as domain suffix
+                      domain_suffixes.append(line)
+
+          # Build sing-box rule-set source JSON
+          rules = {}
+          if domains:
+              rules["domain"] = sorted(set(domains))
+          if domain_suffixes:
+              rules["domain_suffix"] = sorted(set(domain_suffixes))
+          if domain_keywords:
+              rules["domain_keyword"] = sorted(set(domain_keywords))
+          if ip_cidrs:
+              rules["ip_cidr"] = sorted(set(ip_cidrs))
+
+          rule_set = {
+              "version": 2,
+              "rules": [rules] if rules else []
+          }
+
+          with open("rules/direct.json", "w") as f:
+              json.dump(rule_set, f, indent=2, ensure_ascii=False)
+
+          print(f"Converted: {len(domains)} domain, {len(domain_suffixes)} domain_suffix, "
+                f"{len(domain_keywords)} domain_keyword, {len(ip_cidrs)} ip_cidr")
+          EOF
+
+      - name: Compile JSON to SRS binary
+        run: |
+          sing-box rule-set compile rules/direct.json -o rules/direct.srs
+          echo "Generated rules/direct.srs ($(stat -c%s rules/direct.srs) bytes)"
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add rules/direct.srs
+          # Also keep the intermediate JSON for reference (optional, remove if not needed)
+          git add rules/direct.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: auto-convert direct.list to sing-box SRS"
+            git push
+          fi
