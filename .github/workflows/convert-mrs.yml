@@ -23,26 +23,42 @@ jobs:
           gzip -d mihomo.gz
           chmod +x mihomo
 
-      - name: Detect rule type and convert
+      - name: Convert classical to domain format
         run: |
           FILE="rules/direct.list"
+          DOMAIN_FILE="${FILE}.domain"
 
-          # 自动检测规则类型：如果包含 DOMAIN / DOMAIN-SUFFIX 等关键字则为 domain 类型
-          # 如果包含 IP-CIDR 则为 ipcidr 类型，否则为 classical 类型
-          if head -20 "$FILE" | grep -qiE '^(DOMAIN|DOMAIN-SUFFIX|DOMAIN-KEYWORD|FULL)'; then
-            TYPE="domain"
-          elif head -20 "$FILE" | grep -qiE '^IP-CIDR'; then
-            TYPE="ipcidr"
-          else
-            TYPE="domain"
-          fi
+          # 过滤注释和空行，然后转换为 domain 通配符格式
+          # DOMAIN-SUFFIX,x  → .x   (后缀匹配)
+          # DOMAIN,x         → x    (精确匹配)
+          # DOMAIN-KEYWORD,x → 无法用 domain 格式表达，输出警告并跳过
+          sed -e '/^[[:space:]]*#/d' -e '/^[[:space:]]*$/d' "$FILE" | while IFS= read -r line; do
+            case "$line" in
+              DOMAIN-SUFFIX,*)
+                echo ".${line#DOMAIN-SUFFIX,}"
+                ;;
+              DOMAIN,*)
+                echo "${line#DOMAIN,}"
+                ;;
+              DOMAIN-KEYWORD,*)
+                echo "::warning::DOMAIN-KEYWORD 无法转为 domain 格式，已跳过: $line"
+                ;;
+              *)
+                echo "::warning::未知规则类型，已跳过: $line"
+                ;;
+            esac
+          done > "$DOMAIN_FILE"
 
-          # 过滤注释和空行，生成干净的临时文件
-          sed -e '/^[[:space:]]*#/d' -e '/^[[:space:]]*$/d' "$FILE" > "${FILE}.clean"
+          TOTAL=$(wc -l < "$FILE")
+          CONVERTED=$(wc -l < "$DOMAIN_FILE")
+          echo "转换完成: $CONVERTED / $TOTAL 条规则"
+          echo "--- 预览前 10 行 ---"
+          head -10 "$DOMAIN_FILE"
 
-          echo "Detected rule type: $TYPE"
-          ./mihomo convert-ruleset "$TYPE" text "${FILE}.clean" "rules/direct.mrs"
-          rm -f "${FILE}.clean"
+      - name: Convert to MRS
+        run: |
+          ./mihomo convert-ruleset domain text "rules/direct.list.domain" "rules/direct.mrs"
+          rm -f "rules/direct.list.domain"
 
       - name: Verify MRS file
         run: |
