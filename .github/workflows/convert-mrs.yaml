@@ -1,0 +1,50 @@
+name: Convert Ruleset to MRS
+
+on:
+  push:
+    paths:
+      - 'rules/direct.list'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download mihomo
+        run: |
+          MIHOMO_VERSION="v1.19.0"
+          wget -qO mihomo.gz "https://github.com/MetaCubeX/mihomo/releases/download/${MIHOMO_VERSION}/mihomo-linux-amd64-${MIHOMO_VERSION}.gz"
+          gzip -d mihomo.gz
+          chmod +x mihomo
+
+      - name: Detect rule type and convert
+        run: |
+          FILE="rules/direct.list"
+
+          # 自动检测规则类型：如果包含 DOMAIN / DOMAIN-SUFFIX 等关键字则为 domain 类型
+          # 如果包含 IP-CIDR 则为 ipcidr 类型，否则为 classical 类型
+          if head -20 "$FILE" | grep -qiE '^(DOMAIN|DOMAIN-SUFFIX|DOMAIN-KEYWORD|FULL)'; then
+            TYPE="domain"
+          elif head -20 "$FILE" | grep -qiE '^IP-CIDR'; then
+            TYPE="ipcidr"
+          else
+            TYPE="domain"
+          fi
+
+          echo "Detected rule type: $TYPE"
+          ./mihomo convert-ruleset "$TYPE" text "$FILE" "rules/direct.mrs"
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add rules/direct.mrs
+          # 仅在有变更时提交
+          git diff --cached --quiet || git commit -m "chore: auto convert direct.list to direct.mrs"
+          git push
