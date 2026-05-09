@@ -40,8 +40,32 @@ jobs:
             TYPE="domain"
           fi
 
+          # 过滤注释和空行，生成干净的临时文件
+          sed -e '/^[[:space:]]*#/d' -e '/^[[:space:]]*$/d' "$FILE" > "${FILE}.clean"
+
           echo "Detected rule type: $TYPE"
-          ./mihomo convert-ruleset "$TYPE" text "$FILE" "rules/direct.mrs"
+          ./mihomo convert-ruleset "$TYPE" text "${FILE}.clean" "rules/direct.mrs"
+          rm -f "${FILE}.clean"
+
+      - name: Verify MRS file
+        run: |
+          MRS_FILE="rules/direct.mrs"
+
+          # 检查文件是否存在且非空
+          if [ ! -s "$MRS_FILE" ]; then
+            echo "::error::MRS file is empty or missing"
+            exit 1
+          fi
+
+          # 检查文件头 — .mrs 是 zstd 压缩格式，magic bytes 为 28 B5 2F FD
+          MAGIC=$(xxd -l 4 -p "$MRS_FILE")
+          if [ "$MAGIC" != "28b52ffd" ]; then
+            echo "::error::Invalid MRS file header: $MAGIC (expected zstd magic: 28b52ffd)"
+            exit 1
+          fi
+
+          FILE_SIZE=$(stat -c%s "$MRS_FILE")
+          echo "✅ MRS file is valid (size: ${FILE_SIZE} bytes, format: zstd)"
 
       - name: Commit and push
         run: |
