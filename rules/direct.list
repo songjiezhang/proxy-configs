@@ -9,10 +9,9 @@ DOMAIN-SUFFIX,adobe.com
 DOMAIN-SUFFIX,88996.cloud
 DOMAIN-SUFFIX,loc.cc
 # academic
-DOMAIN-KEYWORD,sciencedirect
 DOMAIN-SUFFIX,sciencedirect.com
 DOMAIN-SUFFIX,sciencedirectassets.com
-DOMAIN,www.cc98.org
+DOMAIN-SUFFIX,cc98.org
 DOMAIN-SUFFIX,webofscience.com
 DOMAIN-SUFFIX,researchgate.net
 DOMAIN-SUFFIX,elsevier.com
