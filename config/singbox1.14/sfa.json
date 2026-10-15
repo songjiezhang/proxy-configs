@@ -131,7 +131,7 @@
             ],
             "url": "https://www.gstatic.com/generate_204",
             "interval": "5m",
-            "tolerance": 50
+            "tolerance": 100
         },
         {
             "tag": "手动选择",
