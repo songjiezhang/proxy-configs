@@ -22,6 +22,9 @@ const subscriptionType =
     ? "collection"
     : "subscription";
 
+// API Service 密码参数
+const servicePassword = args.service_password;
+
 const selectorTag = "默认代理";
 const directTag = "直连";
 
@@ -157,6 +160,18 @@ if (
   !selector.outbounds.includes(selector.default)
 ) {
   delete selector.default;
+}
+
+// 更新 sing-box 1.14 API Service 密码
+if (servicePassword !== undefined && servicePassword !== "") {
+  if (Array.isArray(config.services)) {
+    for (const service of config.services) {
+      if (service.type === "api") {
+        service.secret = String(servicePassword);
+      }
+    }
+    log("API Service 密码已更新");
+  }
 }
 
 // 输出完整 sing-box 配置
