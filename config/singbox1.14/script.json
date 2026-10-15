@@ -141,7 +141,8 @@ const selector = config.outbounds.find(
   item => item.tag === selectorTag
 );
 
-const autoSelector = config.outbounds.find(
+
+let autoSelector = config.outbounds.find(
   item => item.tag === autoTag
 );
 
@@ -153,9 +154,25 @@ let manualSelector = config.outbounds.find(
 if (!selector || selector.type !== "selector") {
   throw new Error("找不到默认代理 selector");
 }
-// 检查自动选择
-if (!autoSelector || autoSelector.type !== "urltest") {
-  throw new Error("找不到自动选择 urltest");
+// 如果没有自动选择，自动创建 urltest
+if (!autoSelector) {
+  autoSelector = {
+    tag: autoTag,
+    type: "urltest",
+    outbounds: [],
+    url: "https://www.gstatic.com/generate_204",
+    interval: "30m",
+    tolerance: 100
+  };
+
+  config.outbounds.push(autoSelector);
+  log("已自动创建：自动选择");
+}
+// 如果存在同名组，但类型不是 urltest
+if (autoSelector.type !== "urltest") {
+  throw new Error(
+    "自动选择存在，但类型不是 urltest"
+  );
 }
 // 如果模板中没有手动选择则自动创建
 if (!manualSelector) {
