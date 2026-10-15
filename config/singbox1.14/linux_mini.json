@@ -150,7 +150,7 @@
     "http_clients": [
         {
             "tag": "直连下载",
-            "detour": "直连"
+            "domain_resolver": "ali"
         }
     ],
     "route": {
