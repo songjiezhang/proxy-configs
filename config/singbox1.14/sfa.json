@@ -359,9 +359,7 @@
                 "tag": "custom-direct",
                 "type": "remote",
                 "format": "binary",
-                "url": "https://raw.githubusercontent.com/songjiezhang/proxy-configs/main/rules/direct.srs",
-                "http_client": "直连下载",
-                "update_interval": "1d"
+                "url": "https://gh-proxy.com/https://raw.githubusercontent.com/songjiezhang/proxy-configs/main/rules/direct.srs"
             },
             {
                 "tag": [
