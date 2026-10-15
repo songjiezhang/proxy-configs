@@ -161,8 +161,8 @@ if (!autoSelector) {
     type: "urltest",
     outbounds: [],
     url: "https://www.gstatic.com/generate_204",
-    interval: "30m",
-    tolerance: 100
+    interval: "5m",
+    tolerance: 50
   };
 
   config.outbounds.push(autoSelector);

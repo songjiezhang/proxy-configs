@@ -130,8 +130,8 @@
                 "ZJ-US-Hysteria2"
             ],
             "url": "https://www.gstatic.com/generate_204",
-            "interval": "30m",
-            "tolerance": 100
+            "interval": "5m",
+            "tolerance": 50
         },
         {
             "tag": "手动选择",
@@ -140,6 +140,10 @@
                 "ZJ-US-AnyTLS",
                 "ZJ-US-Hysteria2"
             ]
+        },
+        {
+            "tag": "直连",
+            "type": "direct"
         }
     ],
     "http_clients": [
