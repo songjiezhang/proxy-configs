@@ -140,6 +140,10 @@
                 "ZJ-US-AnyTLS",
                 "ZJ-US-Hysteria2"
             ]
+        },
+        {
+            "tag": "直连",
+            "type": "direct"
         }
     ],
     "http_clients": [
