@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'rules/direct.list'
+      - '.github/workflows/convert-rules.yml'
   workflow_dispatch:
 
 permissions:
@@ -26,10 +27,9 @@ jobs:
 
       - name: Install sing-box
         run: |
-          VERSION=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases | \
-            grep -oP '"tag_name": "v\K1\.13\.\d+' | head -1)
+          VERSION="1.14.3"
           echo "Installing sing-box v${VERSION}"
-          curl -Lo sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/download/v${VERSION}/sing-box-${VERSION}-linux-amd64.tar.gz"
+          curl -fL --retry 3 -o sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/download/v${VERSION}/sing-box-${VERSION}-linux-amd64.tar.gz"
           tar -xzf sing-box.tar.gz
           sudo mv sing-box-${VERSION}-linux-amd64/sing-box /usr/local/bin/
           sing-box version
@@ -52,10 +52,10 @@ jobs:
                 echo "${line#DOMAIN,}"
                 ;;
               DOMAIN-KEYWORD,*)
-                echo "::warning::DOMAIN-KEYWORD 无法转为 mihomo domain 格式，已跳过: $line"
+                echo "::warning::DOMAIN-KEYWORD 无法转为 mihomo domain 格式，已跳过: $line" >&2
                 ;;
               *)
-                echo "::warning::未知规则类型，已跳过: $line"
+                echo "::warning::未知规则类型，已跳过: $line" >&2
                 ;;
             esac
           done > "$DOMAIN_FILE"
@@ -128,6 +128,7 @@ jobs:
           if ip_cidrs:
               rules["ip_cidr"] = sorted(set(ip_cidrs))
 
+          # version 4 自 sing-box 1.13 起支持，1.14 可直接读取；无需使用 version 5 的新增字段。
           rule_set = {
               "version": 4,
               "rules": [rules] if rules else []

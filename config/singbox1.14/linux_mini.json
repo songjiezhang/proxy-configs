@@ -58,6 +58,7 @@
             },
             {
                 "rule_set": [
+                    "custom-direct",
                     "fakeipfilter-cn",
                     "geosite-cn",
                     "geosite-microsoft@cn",
@@ -257,6 +258,10 @@
                 "outbound": "默认代理"
             },
             {
+                "rule_set": "custom-direct",
+                "outbound": "直连"
+            },
+            {
                 "rule_set": "geosite-private",
                 "outbound": "直连"
             },
@@ -350,6 +355,14 @@
             }
         ],
         "rule_set": [
+            {
+                "tag": "custom-direct",
+                "type": "remote",
+                "format": "binary",
+                "url": "https://raw.githubusercontent.com/songjiezhang/proxy-configs/main/rules/direct.srs",
+                "http_client": "直连下载",
+                "update_interval": "1d"
+            },
             {
                 "tag": [
                     "fakeipfilter-cn",
