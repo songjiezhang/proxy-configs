@@ -1,0 +1,166 @@
+
+/*
+ * sing-box 1.14 / Sub-Store 节点替换脚本
+ *
+ * 参数：
+ * type=组合订阅
+ * name=自建订阅
+ *
+ * 功能：
+ * 1. 获取 Sub-Store 订阅节点
+ * 2. 替换模板中的旧代理节点
+ * 3. 更新「默认代理」选择组
+ * 4. 保留其他所有配置
+ */
+
+const args = $arguments || {};
+
+const subscriptionName = args.name || "自建订阅";
+
+const subscriptionType =
+  /^(1|col|collection|组合订阅)$/i.test(args.type || "")
+    ? "collection"
+    : "subscription";
+
+const selectorTag = "默认代理";
+const directTag = "直连";
+
+// 模板中需要被替换的旧节点
+const oldNodeTags = [
+  "ZJ-US-AnyTLS",
+  "ZJ-US-Hysteria2"
+];
+
+// 排除机场公告、流量信息等无效节点
+const excludeRegex =
+  /官网|剩余|流量|套餐|免费|订阅|到期|直连|Expire|Traffic|GB/i;
+
+function log(message) {
+  console.log("[sing-box 1.14] " + message);
+}
+
+// 读取模板配置
+const parser = ProxyUtils.JSON5 || JSON;
+const config = parser.parse($content ?? $files[0]);
+
+if (!Array.isArray(config.outbounds)) {
+  throw new Error("模板缺少 outbounds");
+}
+
+// 从 Sub-Store 获取订阅
+log("正在读取订阅：" + subscriptionName);
+
+const result = await produceArtifact({
+  name: subscriptionName,
+  type: subscriptionType,
+  platform: "sing-box"
+});
+
+const data =
+  typeof result === "string"
+    ? JSON.parse(result)
+    : result;
+
+if (!data || !Array.isArray(data.outbounds)) {
+  throw new Error("无法读取订阅节点");
+}
+
+// 过滤无效节点
+const proxyTypes = new Set([
+  "shadowsocks",
+  "vmess",
+  "vless",
+  "trojan",
+  "hysteria",
+  "hysteria2",
+  "tuic",
+  "anytls",
+  "ssh",
+  "shadowtls",
+  "http",
+  "socks",
+  "wireguard",
+  "naive"
+]);
+
+const reservedTags = new Set(
+  config.outbounds
+    .filter(item =>
+      !oldNodeTags.includes(item.tag)
+    )
+    .map(item => item.tag)
+);
+
+const usedTags = new Set(reservedTags);
+
+const nodes = [];
+
+for (const node of data.outbounds) {
+  if (
+    !node ||
+    !node.tag ||
+    !proxyTypes.has(node.type) ||
+    excludeRegex.test(node.tag)
+  ) {
+    continue;
+  }
+
+  const copy = { ...node };
+  const originalTag = copy.tag;
+
+  // 防止与模板出站或其他订阅节点重名
+  let suffix = 2;
+
+  while (usedTags.has(copy.tag)) {
+    copy.tag = originalTag + "-" + suffix++;
+  }
+
+  usedTags.add(copy.tag);
+  nodes.push(copy);
+}
+
+if (nodes.length === 0) {
+  throw new Error("订阅中没有可用的代理节点");
+}
+
+log("有效节点数量：" + nodes.length);
+
+// 删除模板里的旧节点
+config.outbounds = config.outbounds.filter(
+  item => !oldNodeTags.includes(item.tag)
+);
+
+// 更新默认代理选择组
+const selector = config.outbounds.find(
+  item => item.tag === selectorTag
+);
+
+if (!selector || selector.type !== "selector") {
+  throw new Error("找不到默认代理 selector");
+}
+
+selector.outbounds = nodes.map(node => node.tag);
+
+// 添加订阅节点
+config.outbounds.push(...nodes);
+
+// 检查直连出口是否保留
+if (!config.outbounds.some(
+  item => item.tag === directTag
+)) {
+  throw new Error("模板缺少直连出口");
+}
+
+// 清理可能残留的旧 selector 默认值
+if (
+  selector.default &&
+  !selector.outbounds.includes(selector.default)
+) {
+  delete selector.default;
+}
+
+// 输出完整 sing-box 配置
+$content = JSON.stringify(config, null, 2);
+
+log("节点替换完成");
+log("默认代理：" + selector.outbounds.join(", "));
