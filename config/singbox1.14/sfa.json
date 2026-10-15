@@ -117,47 +117,29 @@
             "tag": "默认代理",
             "type": "selector",
             "outbounds": [
+                "自动选择",
+                "手动选择"
+            ],
+            "default": "自动选择"
+        },
+        {
+            "tag": "自动选择",
+            "type": "urltest",
+            "outbounds": [
+                "ZJ-US-AnyTLS",
+                "ZJ-US-Hysteria2"
+            ],
+            "url": "https://www.gstatic.com/generate_204",
+            "interval": "30m",
+            "tolerance": 100
+        },
+        {
+            "tag": "手动选择",
+            "type": "selector",
+            "outbounds": [
                 "ZJ-US-AnyTLS",
                 "ZJ-US-Hysteria2"
             ]
-        },
-        {
-            "tag": "ZJ-US-AnyTLS",
-            "type": "anytls",
-            "server": "test.com",
-            "server_port": 443,
-            "password": "SOTK3rfGTyYsKJT3PKJXrgXADIAOr6N4/zlw=",
-            "tls": {
-                "enabled": true,
-                "server_name": "test.com",
-                "insecure": false
-            },
-            "idle_session_check_interval": "30s",
-            "idle_session_timeout": "30s",
-            "min_idle_session": 10
-        },
-        {
-            "tag": "ZJ-US-Hysteria2",
-            "type": "hysteria2",
-            "server": "test.com",
-            "server_port": 1443,
-            "password": "SOTK3rfGTyYsKJT3PKJXrgXADIAOr6N4/zlw=",
-            "obfs": {
-                "type": "salamander",
-                "password": "SOTK3rfGTyYsKJT3PKJXrgXADIAOr6N4/zlw="
-            },
-            "tls": {
-                "enabled": true,
-                "server_name": "test.com",
-                "insecure": false
-            },
-            "up_mbps": 100,
-            "down_mbps": 600
-        },
-        {
-            "tag": "直连",
-            "type": "direct",
-            "domain_resolver": "ali"
         }
     ],
     "http_clients": [

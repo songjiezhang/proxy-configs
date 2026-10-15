@@ -1,4 +1,3 @@
-
 /*
  * sing-box 1.14 / Sub-Store 节点替换脚本
  *
@@ -6,11 +5,17 @@
  * type=组合订阅
  * name=自建订阅
  *
+ * 可选：
+ * service_password=xxx
+ * clash_password=xxx
+ *
  * 功能：
  * 1. 获取 Sub-Store 订阅节点
- * 2. 替换模板中的旧代理节点
- * 3. 更新「默认代理」选择组
- * 4. 保留其他所有配置
+ * 2. 删除模板中的旧代理节点
+ * 3. 自动选择：包含全部订阅节点
+ * 4. 手动选择：包含全部订阅节点
+ * 5. 默认代理：自动选择 + 手动选择
+ * 6. 保留 DNS、route、TUN 等其他配置
  */
 
 const args = $arguments || {};
@@ -19,38 +24,39 @@ const subscriptionName = args.name || "自建订阅";
 
 const subscriptionType =
   /^(1|col|collection|组合订阅)$/i.test(args.type || "")
-    ? "collection"
-    : "subscription";
+    ? "collection": "subscription";
 
-// API Service 密码参数
 const servicePassword = args.service_password;
+const clashPassword = args.clash_password;
 
 const selectorTag = "默认代理";
+const autoTag = "自动选择";
+const manualTag = "手动选择";
 const directTag = "直连";
 
-// 模板中需要被替换的旧节点
+// 模板中需要替换的旧节点
 const oldNodeTags = [
   "ZJ-US-AnyTLS",
   "ZJ-US-Hysteria2"
 ];
 
-// 排除机场公告、流量信息等无效节点
+// 排除无效节点
 const excludeRegex =
   /官网|剩余|流量|套餐|免费|订阅|到期|直连|Expire|Traffic|GB/i;
 
 function log(message) {
   console.log("[sing-box 1.14] " + message);
 }
-
 // 读取模板配置
 const parser = ProxyUtils.JSON5 || JSON;
-const config = parser.parse($content ?? $files[0]);
+const config = parser.parse($content ?? $files[
+  0
+]);
 
 if (!Array.isArray(config.outbounds)) {
   throw new Error("模板缺少 outbounds");
 }
-
-// 从 Sub-Store 获取订阅
+// 获取 Sub-Store 订阅
 log("正在读取订阅：" + subscriptionName);
 
 const result = await produceArtifact({
@@ -67,8 +73,7 @@ const data =
 if (!data || !Array.isArray(data.outbounds)) {
   throw new Error("无法读取订阅节点");
 }
-
-// 过滤无效节点
+// 支持的代理协议
 const proxyTypes = new Set([
   "shadowsocks",
   "vmess",
@@ -86,18 +91,17 @@ const proxyTypes = new Set([
   "naive"
 ]);
 
+// 获取模板已有的出站名称
 const reservedTags = new Set(
   config.outbounds
-    .filter(item =>
-      !oldNodeTags.includes(item.tag)
-    )
+    .filter(item => !oldNodeTags.includes(item.tag))
     .map(item => item.tag)
 );
 
 const usedTags = new Set(reservedTags);
-
 const nodes = [];
 
+// 过滤订阅节点并处理重名
 for (const node of data.outbounds) {
   if (
     !node ||
@@ -108,10 +112,9 @@ for (const node of data.outbounds) {
     continue;
   }
 
-  const copy = { ...node };
+  const copy = { ...node
+  };
   const originalTag = copy.tag;
-
-  // 防止与模板出站或其他订阅节点重名
   let suffix = 2;
 
   while (usedTags.has(copy.tag)) {
@@ -128,54 +131,105 @@ if (nodes.length === 0) {
 
 log("有效节点数量：" + nodes.length);
 
-// 删除模板里的旧节点
+// 删除模板旧节点
 config.outbounds = config.outbounds.filter(
   item => !oldNodeTags.includes(item.tag)
 );
 
-// 更新默认代理选择组
+// 获取策略组
 const selector = config.outbounds.find(
   item => item.tag === selectorTag
 );
 
+const autoSelector = config.outbounds.find(
+  item => item.tag === autoTag
+);
+
+let manualSelector = config.outbounds.find(
+  item => item.tag === manualTag
+);
+
+// 检查默认代理
 if (!selector || selector.type !== "selector") {
   throw new Error("找不到默认代理 selector");
 }
+// 检查自动选择
+if (!autoSelector || autoSelector.type !== "urltest") {
+  throw new Error("找不到自动选择 urltest");
+}
+// 如果模板中没有手动选择则自动创建
+if (!manualSelector) {
+  manualSelector = {
+    tag: manualTag,
+    type: "selector",
+    outbounds: []
+  };
 
-selector.outbounds = nodes.map(node => node.tag);
+  config.outbounds.push(manualSelector);
+}
 
-// 添加订阅节点
+if (manualSelector.type !== "selector") {
+  throw new Error("手动选择必须是 selector 类型");
+}
+// 获取所有订阅节点名称
+const nodeTags = nodes.map(node => node.tag);
+
+// 默认代理：自动 + 手动
+selector.outbounds = [autoTag, manualTag
+];
+selector.default = autoTag;
+
+// 自动选择：全部订阅节点
+autoSelector.outbounds = [...nodeTags
+];
+
+// 手动选择：全部订阅节点
+manualSelector.outbounds = [...nodeTags
+];
+
+// 清理手动选择无效的默认节点
+if (
+  manualSelector.default &&
+  !nodeTags.includes(manualSelector.default)
+) {
+  delete manualSelector.default;
+}
+// 添加订阅节点到 outbounds
 config.outbounds.push(...nodes);
 
-// 检查直连出口是否保留
+// 确认直连存在
 if (!config.outbounds.some(
   item => item.tag === directTag
 )) {
   throw new Error("模板缺少直连出口");
 }
-
-// 清理可能残留的旧 selector 默认值
+// 修改 API Service 密码
 if (
-  selector.default &&
-  !selector.outbounds.includes(selector.default)
+  servicePassword !== undefined &&
+  servicePassword !== "" &&
+  Array.isArray(config.services)
 ) {
-  delete selector.default;
-}
-
-// 更新 sing-box 1.14 API Service 密码
-if (servicePassword !== undefined && servicePassword !== "") {
-  if (Array.isArray(config.services)) {
-    for (const service of config.services) {
-      if (service.type === "api") {
-        service.secret = String(servicePassword);
-      }
+  for (const service of config.services) {
+    if (service.type === "api") {
+      service.secret = String(servicePassword);
     }
-    log("API Service 密码已更新");
   }
 }
+// 修改 Clash API 密码
+if (
+  clashPassword !== undefined &&
+  clashPassword !== "" &&
+  config.experimental?.clash_api
+) {
+  config.experimental.clash_api.secret =
+    String(clashPassword);
+}
+// 输出完整配置
+$content = JSON.stringify(config,
+null,
+2);
 
-// 输出完整 sing-box 配置
-$content = JSON.stringify(config, null, 2);
-
-log("节点替换完成");
+log("配置生成成功");
 log("默认代理：" + selector.outbounds.join(", "));
+log("自动选择节点：" + nodeTags.length);
+log("手动选择节点：" + nodeTags.length);
